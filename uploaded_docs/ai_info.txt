@@ -1,0 +1,14 @@
+Artificial Intelligence (AI) is the simulation of human intelligence by machines.
+AI systems can learn, reason, solve problems, and understand language.
+
+Machine learning is a subset of AI where computers learn from data without being explicitly programmed.
+It uses algorithms to find patterns and make decisions.
+
+Deep learning is a type of machine learning that uses neural networks with many layers.
+Neural networks are inspired by the human brain.
+
+Natural Language Processing (NLP) is a branch of AI that helps computers understand human language.
+Examples include chatbots, translation tools, and voice assistants.
+
+AI was first conceptualized by Alan Turing in 1950 with his famous Turing Test.
+John McCarthy coined the term Artificial Intelligence in 1956.

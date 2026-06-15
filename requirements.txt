@@ -1,0 +1,17 @@
+streamlit
+langchain
+langchain-core
+langchain-community
+langchain-groq
+langchain-huggingface
+langchain-chroma
+langchain-text-splitters
+chromadb
+sentence-transformers
+pypdf
+python-docx
+docx2txt
+beautifulsoup4
+requests
+python-dotenv
+groq
