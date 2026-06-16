@@ -12,9 +12,17 @@ load_dotenv()
 # 🧠 Load Groq AI (Llama 3)
 # ─────────────────────────────────────────
 def get_llm():
+    try:
+        import streamlit as st
+        api_key = st.secrets["GROQ_API_KEY"]
+    except:
+        from dotenv import load_dotenv
+        load_dotenv()
+        api_key = os.getenv("GROQ_API_KEY")
+    
     return ChatGroq(
-        model="llama-3.3-70b-versatile",   # free & very powerful!
-        groq_api_key=os.getenv("GROQ_API_KEY"),
+        model="llama-3.3-70b-versatile",
+        groq_api_key=api_key,
         temperature=0.2,
         max_tokens=1024
     )
