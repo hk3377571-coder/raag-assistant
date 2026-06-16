@@ -1,9 +1,42 @@
+from audio_recorder_streamlit import audio_recorder
+from groq import Groq
+import tempfile
+from gtts import gTTS
+import base64
 import streamlit as st
 import shutil
 import os
 from rag.loader import load_document
 from rag.embedder import store_documents
 from rag.retriever import build_rag_chain, ask
+
+# ─────────────────────────────────────────
+# 🔧 Helper Functions
+# ─────────────────────────────────────────
+def speech_to_text(audio_bytes):
+    try:
+        api_key = st.secrets["GROQ_API_KEY"]
+    except:
+        api_key = os.getenv("GROQ_API_KEY")
+    client = Groq(api_key=api_key)
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        f.write(audio_bytes)
+        tmp_path = f.name
+    with open(tmp_path, "rb") as audio_file:
+        transcription = client.audio.transcriptions.create(
+            model="whisper-large-v3",
+            file=audio_file,
+        )
+    return transcription.text
+
+def text_to_audio(text):
+    tts = gTTS(text=text, lang='en')
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+        tts.save(f.name)
+        tmp_path = f.name
+    with open(tmp_path, "rb") as audio_file:
+        b64 = base64.b64encode(audio_file.read()).decode()
+    return f'<audio autoplay controls><source src="data:audio/mp3;base64,{b64}" type="audio/mp3"></audio>'
 
 # ─────────────────────────────────────────
 # 🎨 Page Config
@@ -35,6 +68,8 @@ if "chain" not in st.session_state:
     st.session_state.chain = None
 if "docs_loaded" not in st.session_state:
     st.session_state.docs_loaded = False
+if "last_audio" not in st.session_state:
+    st.session_state.last_audio = None
 
 # ─────────────────────────────────────────
 # 📌 Sidebar — Upload Documents
@@ -43,7 +78,6 @@ with st.sidebar:
     st.title("📁 Document Manager")
     st.markdown("---")
 
-    # File Upload
     st.subheader("📤 Upload Files")
     uploaded_files = st.file_uploader(
         "Upload PDF, TXT, or DOCX",
@@ -51,15 +85,12 @@ with st.sidebar:
         accept_multiple_files=True
     )
 
-    # URL Input
     st.subheader("🌐 Or Add a URL")
     url_input = st.text_input("Paste a website URL")
 
-    # Process Button
     if st.button("⚡ Process Documents", type="primary"):
         all_docs = []
 
-        # Save and load uploaded files
         if uploaded_files:
             os.makedirs("uploaded_docs", exist_ok=True)
             for file in uploaded_files:
@@ -71,18 +102,16 @@ with st.sidebar:
                     all_docs.extend(docs)
                 st.success(f"✅ {file.name}")
 
-        # Load URL
         if url_input:
-            with st.spinner(f"Reading URL..."):
+            with st.spinner("Reading URL..."):
                 docs = load_document(url_input)
                 all_docs.extend(docs)
-            st.success(f"✅ URL loaded!")
+            st.success("✅ URL loaded!")
 
-        # Store in ChromaDB
         if all_docs:
             with st.spinner("🧠 Building knowledge base..."):
-                if os.path.exists("chroma_db"):
-                    shutil.rmtree("chroma_db")
+                if os.path.exists("faiss_db"):
+                    shutil.rmtree("faiss_db")
                 store_documents(all_docs)
                 st.session_state.chain = build_rag_chain()
                 st.session_state.docs_loaded = True
@@ -92,12 +121,10 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Clear Chat
     if st.button("🗑️ Clear Chat"):
         st.session_state.chat_history = []
         st.rerun()
 
-    # Status
     st.markdown("---")
     if st.session_state.docs_loaded:
         st.success("📚 Documents loaded!")
@@ -111,32 +138,42 @@ st.title("🤖 RAAG Assistant")
 st.caption("Chat with your documents using AI")
 st.markdown("---")
 
-# Show chat history
+# Chat history
 for message in st.session_state.chat_history:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-# Chat input
-if prompt := st.chat_input("Ask a question about your documents..."):
-    # Show user message
+# ── Mic Input ──
+st.markdown("🎤 **Or speak your question:**")
+audio_bytes = audio_recorder(text="", icon_size="2x", pause_threshold=2.0)
+
+prompt = None
+
+# Handle mic
+if audio_bytes and audio_bytes != st.session_state.last_audio:
+    st.session_state.last_audio = audio_bytes
+    with st.spinner("🎤 Transcribing..."):
+        prompt = speech_to_text(audio_bytes)
+    st.info(f"🎤 You said: *{prompt}*")
+
+# Handle text input
+text_prompt = st.chat_input("Ask a question about your documents...")
+if text_prompt:
+    prompt = text_prompt
+
+# ── Process & Answer ──
+if prompt:
     with st.chat_message("user"):
         st.write(prompt)
-    st.session_state.chat_history.append({
-        "role": "user",
-        "content": prompt
-    })
+    st.session_state.chat_history.append({"role": "user", "content": prompt})
 
-    # Get AI answer
     if st.session_state.docs_loaded and st.session_state.chain:
         with st.chat_message("assistant"):
             with st.spinner("🤔 Thinking..."):
                 answer = ask(st.session_state.chain, prompt)
                 st.write(answer)
-        st.session_state.chat_history.append({
-            "role": "assistant",
-            "content": answer
-        })
+                st.markdown(text_to_audio(answer), unsafe_allow_html=True)
+        st.session_state.chat_history.append({"role": "assistant", "content": answer})
     else:
         with st.chat_message("assistant"):
-            st.warning("⬆️ Please upload documents first using the sidebar!")
-            
+            st.warning("⬆️ Please upload documents first!")
