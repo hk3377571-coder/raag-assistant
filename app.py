@@ -150,7 +150,7 @@ audio_bytes = audio_recorder(text="", icon_size="2x", pause_threshold=2.0)
 prompt = None
 
 # Handle mic
-if audio_bytes and audio_bytes != st.session_state.last_audio:
+if audio_bytes and audio_bytes != st.session_state.last_audio and len(audio_bytes) > 1000:
     st.session_state.last_audio = audio_bytes
     with st.spinner("🎤 Transcribing..."):
         prompt = speech_to_text(audio_bytes)
