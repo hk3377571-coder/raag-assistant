@@ -42,7 +42,7 @@ def text_to_audio(text):
 # 🎨 Page Config
 # ─────────────────────────────────────────
 st.set_page_config(
-    page_title="RAAG Assistant",
+    page_title="RAG Assistant",
     page_icon="🤖",
     layout="wide"
 )
@@ -134,7 +134,7 @@ with st.sidebar:
 # ─────────────────────────────────────────
 # 💬 Main Chat Area
 # ─────────────────────────────────────────
-st.title("🤖 RAAG Assistant")
+st.title("🤖 RAG Assistant")
 st.caption("Chat with your documents using AI")
 st.markdown("---")
 
