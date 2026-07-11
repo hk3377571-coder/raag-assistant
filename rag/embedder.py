@@ -1,18 +1,12 @@
 import os
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 
-# ─────────────────────────────────────────
-# ⚙️ Settings
-# ─────────────────────────────────────────
-FAISS_DIR = "faiss_db"
+CHROMA_DIR = "/tmp/chroma_db"      # ✅ works on Streamlit Cloud
 EMBED_MODEL = "all-MiniLM-L6-v2"
 
-# ─────────────────────────────────────────
-# ✂️ Split documents into small chunks
-# ─────────────────────────────────────────
 def chunk_documents(documents: list[Document]) -> list[Document]:
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
@@ -22,39 +16,28 @@ def chunk_documents(documents: list[Document]) -> list[Document]:
     print(f"✅ Split into {len(chunks)} chunks")
     return chunks
 
-
-# ─────────────────────────────────────────
-# 🧠 Load the embedding model
-# ─────────────────────────────────────────
 def get_embedding_model():
     print("⏳ Loading embedding model...")
     embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
     print("✅ Embedding model ready!")
     return embeddings
 
-
-# ─────────────────────────────────────────
-# 🗃️ Store chunks into FAISS
-# ─────────────────────────────────────────
 def store_documents(documents: list[Document]):
     chunks = chunk_documents(documents)
     embeddings = get_embedding_model()
-
-    vectordb = FAISS.from_documents(chunks, embeddings)
-    vectordb.save_local(FAISS_DIR)
-    print(f"✅ Stored {len(chunks)} chunks in FAISS at '{FAISS_DIR}'")
+    vectordb = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        persist_directory=CHROMA_DIR
+    )
+    print(f"✅ Stored {len(chunks)} chunks in ChromaDB")
     return vectordb
 
-
-# ─────────────────────────────────────────
-# 🔍 Load existing FAISS store
-# ─────────────────────────────────────────
 def load_vectorstore():
     embeddings = get_embedding_model()
-    vectordb = FAISS.load_local(
-        FAISS_DIR,
-        embeddings,
-        allow_dangerous_deserialization=True
+    vectordb = Chroma(
+        persist_directory=CHROMA_DIR,
+        embedding_function=embeddings
     )
-    print("✅ FAISS loaded!")
+    print("✅ ChromaDB loaded!")
     return vectordb
