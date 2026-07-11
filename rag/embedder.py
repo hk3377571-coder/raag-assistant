@@ -1,11 +1,11 @@
 import os
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 
-CHROMA_DIR = "/tmp/chroma_db"      # ✅ works on Streamlit Cloud
 EMBED_MODEL = "all-MiniLM-L6-v2"
+FAISS_DIR = "/tmp/faiss_db"
 
 def chunk_documents(documents: list[Document]) -> list[Document]:
     splitter = RecursiveCharacterTextSplitter(
@@ -25,19 +25,18 @@ def get_embedding_model():
 def store_documents(documents: list[Document]):
     chunks = chunk_documents(documents)
     embeddings = get_embedding_model()
-    vectordb = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory=CHROMA_DIR
-    )
-    print(f"✅ Stored {len(chunks)} chunks in ChromaDB")
+    vectordb = FAISS.from_documents(chunks, embeddings)
+    os.makedirs(FAISS_DIR, exist_ok=True)
+    vectordb.save_local(FAISS_DIR)
+    print(f"✅ Stored {len(chunks)} chunks in FAISS")
     return vectordb
 
 def load_vectorstore():
     embeddings = get_embedding_model()
-    vectordb = Chroma(
-        persist_directory=CHROMA_DIR,
-        embedding_function=embeddings
+    vectordb = FAISS.load_local(
+        FAISS_DIR,
+        embeddings,
+        allow_dangerous_deserialization=True
     )
-    print("✅ ChromaDB loaded!")
+    print("✅ FAISS loaded!")
     return vectordb
